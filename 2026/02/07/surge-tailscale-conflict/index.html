@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang=&#34;en&#34;>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="平日 Surge 是常驻笔者后台的 然而近日，笔者遭遇了极为申必的灵异事件：Surge 明明已经 Cmd+Q 彻底退出，TUN 模式也关了，系统设置里的代理勾选也全是空的，但浏览器和终端竟然还能复读 127.0.0.1:6152 的 Proxy 配置。 排查起初笔者以为是 Chrome 的缓存问题，遂 Cmd+Q 强退，无效。还查了 .zshrc 和 env 环境变量，并没有 export htt">
+<meta property="og:type" content="article">
+<meta property="og:title" content="走近科学之Surge关不掉">
+<meta property="og:url" content="https://naive.cat/2026/02/07/surge-tailscale-conflict/index.html">
+<meta property="og:site_name" content="NaiveCat">
+<meta property="og:description" content="平日 Surge 是常驻笔者后台的 然而近日，笔者遭遇了极为申必的灵异事件：Surge 明明已经 Cmd+Q 彻底退出，TUN 模式也关了，系统设置里的代理勾选也全是空的，但浏览器和终端竟然还能复读 127.0.0.1:6152 的 Proxy 配置。 排查起初笔者以为是 Chrome 的缓存问题，遂 Cmd+Q 强退，无效。还查了 .zshrc 和 env 环境变量，并没有 export htt">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2026-02-07T23:46:38.000Z">
+<meta property="article:modified_time" content="2026-02-08T05:11:08.143Z">
+<meta property="article:author" content="NaiveCat">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/logo.png">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/logo.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/logo.png">
+        
+      
+    
+    <!-- title -->
+    <title>走近科学之Surge关不掉</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    
+      <link rel="stylesheet" href="https://unpkg.com/@waline/client@v3/dist/waline.css" />
+    
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 8.1.1"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="https://github.com/naivecatme">Projects</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/2026/02/06/channel-projection-problem/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      
+<ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://www.facebook.com/sharer.php?u=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F07%2Fsurge-tailscale-conflict%2F"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F07%2Fsurge-tailscale-conflict%2F&text=%E8%B5%B0%E8%BF%91%E7%A7%91%E5%AD%A6%E4%B9%8BSurge%E5%85%B3%E4%B8%8D%E6%8E%89"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://www.linkedin.com/shareArticle?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F07%2Fsurge-tailscale-conflict%2F&title=%E8%B5%B0%E8%BF%91%E7%A7%91%E5%AD%A6%E4%B9%8BSurge%E5%85%B3%E4%B8%8D%E6%8E%89"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F07%2Fsurge-tailscale-conflict%2F&is_video=false&description=%E8%B5%B0%E8%BF%91%E7%A7%91%E5%AD%A6%E4%B9%8BSurge%E5%85%B3%E4%B8%8D%E6%8E%89"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=%E8%B5%B0%E8%BF%91%E7%A7%91%E5%AD%A6%E4%B9%8BSurge%E5%85%B3%E4%B8%8D%E6%8E%89&body=Check%20out%20this%20article%3A%20https%3A%2F%2Fnaive.cat%2F2026%2F02%2F07%2Fsurge-tailscale-conflict%2F"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F07%2Fsurge-tailscale-conflict%2F&title=%E8%B5%B0%E8%BF%91%E7%A7%91%E5%AD%A6%E4%B9%8BSurge%E5%85%B3%E4%B8%8D%E6%8E%89"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://reddit.com/submit?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F07%2Fsurge-tailscale-conflict%2F&title=%E8%B5%B0%E8%BF%91%E7%A7%91%E5%AD%A6%E4%B9%8BSurge%E5%85%B3%E4%B8%8D%E6%8E%89"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://www.stumbleupon.com/submit?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F07%2Fsurge-tailscale-conflict%2F&title=%E8%B5%B0%E8%BF%91%E7%A7%91%E5%AD%A6%E4%B9%8BSurge%E5%85%B3%E4%B8%8D%E6%8E%89"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://digg.com/submit?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F07%2Fsurge-tailscale-conflict%2F&title=%E8%B5%B0%E8%BF%91%E7%A7%91%E5%AD%A6%E4%B9%8BSurge%E5%85%B3%E4%B8%8D%E6%8E%89"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://www.tumblr.com/share/link?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F07%2Fsurge-tailscale-conflict%2F&name=%E8%B5%B0%E8%BF%91%E7%A7%91%E5%AD%A6%E4%B9%8BSurge%E5%85%B3%E4%B8%8D%E6%8E%89&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F07%2Fsurge-tailscale-conflict%2F&t=%E8%B5%B0%E8%BF%91%E7%A7%91%E5%AD%A6%E4%B9%8BSurge%E5%85%B3%E4%B8%8D%E6%8E%89"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%8E%92%E6%9F%A5"><span class="toc-number">1.</span> <span class="toc-text">排查</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B0%9D%E8%AF%95%E8%A7%A3%E5%86%B3"><span class="toc-number">2.</span> <span class="toc-text">尝试解决</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%A0%B4%E6%A1%88"><span class="toc-number">3.</span> <span class="toc-text">破案</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%88%86%E6%9E%90"><span class="toc-number">4.</span> <span class="toc-text">分析</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">5.</span> <span class="toc-text">总结</span></a></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        走近科学之Surge关不掉
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">NaiveCat</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-02-07T23:46:38.000Z" class="dt-published" itemprop="datePublished">2026-02-07</time>
+        
+      
+    </div>
+
+
+      
+
+      
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <p>平日 Surge 是常驻笔者后台的</p>
+<p>然而近日，笔者遭遇了极为申必的灵异事件：Surge 明明已经 <code>Cmd+Q</code> 彻底退出，TUN 模式也关了，系统设置里的代理勾选也全是空的，但浏览器和终端竟然还能复读 127.0.0.1:6152 的 Proxy 配置。</p>
+<h2 id="排查"><a href="#排查" class="headerlink" title="排查"></a>排查</h2><p>起初笔者以为是 Chrome 的缓存问题，遂 <code>Cmd+Q</code> 强退，无效。还查了 <code>.zshrc</code> 和 <code>env</code> 环境变量，并没有 <code>export http_proxy</code>。</p>
+<p>于是不得不使用高雅指令 <code>scutil</code> 来查看系统底层状态。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">$ scutil --proxy</span><br><span class="line">&lt;dictionary&gt; &#123;</span><br><span class="line">  ExceptionsList : &lt;array&gt; &#123;</span><br><span class="line">    0 : 127.0.0.1</span><br><span class="line">    ...</span><br><span class="line">    8 : passenger.t3go.cn  &lt;-- ？！这是什么贵物</span><br><span class="line">  &#125;</span><br><span class="line">  HTTPEnable : 1         &lt;-- 悲，原来这里是开着的</span><br><span class="line">  HTTPPort : 6152</span><br><span class="line">  HTTPProxy : 127.0.0.1</span><br><span class="line">  ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="尝试解决"><a href="#尝试解决" class="headerlink" title="尝试解决"></a>尝试解决</h2><p>笔者尝试了以下方法</p>
+<ul>
+<li><p>使用 <code>networksetup -setwebproxystate &quot;Wi-Fi&quot; off </code>毫无波动，<code>scutil</code> 依然显示为 1。</p>
+</li>
+<li><p>新建网络位置。 依然无效。</p>
+</li>
+<li><p>物理删除 plist 配置文件。还是无效。</p>
+</li>
+</ul>
+<h2 id="破案"><a href="#破案" class="headerlink" title="破案"></a>破案</h2><p>此刻笔者不得不把目光转移到机器上是不是有什么申必力量在反复与我人机互搏。</p>
+<p>因此把目光转移到了所有与网络配置可能有关的软件上，遂想到 <strong>tailscale</strong>。</p>
+<p>于是尝试把 tailscale 里能 reset 全部 reset了一遍，一直尝试到 reset tailscale vpn。</p>
+<p>喜报，问题解决了。</p>
+<h2 id="分析"><a href="#分析" class="headerlink" title="分析"></a>分析</h2><p>根据结果分析成因，应该是这样：</p>
+<ol>
+<li><p><strong>污染：</strong> 笔者应该是曾在开启 Surge（系统代理生效中）的时候，安装&#x2F;配置了 Tailscale。</p>
+</li>
+<li><p><strong>只读不写：</strong> Tailscale 这个屑，在启动时把当时的系统代理状态（127.0.0.1:6152）直接吞了进去，并作为 VPN 配置文件的一部分“固化”了下来。</p>
+</li>
+<li><p><strong>层级压制：</strong> 由于 Network Extension 的优先级极高，哪怕笔者把物理网卡的代理关了一万次，Tailscale 的虚拟网卡依然在后台默默地执行着那个过期的代理指令。</p>
+</li>
+<li><p><strong>死锁：</strong> 只要 Tailscale 活着，它就会强行把流量劫持到 6152，根本不管 Surge 死没死。</p>
+</li>
+</ol>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>其实应该先排查机器上的软件冲突的可能性，毕竟 macOS 还是很可靠的。</p>
+<p>（逃</p>
+
+  </div>
+</article>
+
+
+
+    <section class="blog-post-comments blog-post-comments-waline">
+        <h2 class="comments-title">评论</h2>
+        <div id="waline_thread">
+            <noscript>Please enable JavaScript to view the comments.</noscript>
+        </div>
+    </section>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="https://github.com/naivecatme">Projects</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%8E%92%E6%9F%A5"><span class="toc-number">1.</span> <span class="toc-text">排查</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%B0%9D%E8%AF%95%E8%A7%A3%E5%86%B3"><span class="toc-number">2.</span> <span class="toc-text">尝试解决</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%A0%B4%E6%A1%88"><span class="toc-number">3.</span> <span class="toc-text">破案</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%88%86%E6%9E%90"><span class="toc-number">4.</span> <span class="toc-text">分析</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93"><span class="toc-number">5.</span> <span class="toc-text">总结</span></a></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      
+<ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://www.facebook.com/sharer.php?u=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F07%2Fsurge-tailscale-conflict%2F"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F07%2Fsurge-tailscale-conflict%2F&text=%E8%B5%B0%E8%BF%91%E7%A7%91%E5%AD%A6%E4%B9%8BSurge%E5%85%B3%E4%B8%8D%E6%8E%89"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://www.linkedin.com/shareArticle?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F07%2Fsurge-tailscale-conflict%2F&title=%E8%B5%B0%E8%BF%91%E7%A7%91%E5%AD%A6%E4%B9%8BSurge%E5%85%B3%E4%B8%8D%E6%8E%89"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F07%2Fsurge-tailscale-conflict%2F&is_video=false&description=%E8%B5%B0%E8%BF%91%E7%A7%91%E5%AD%A6%E4%B9%8BSurge%E5%85%B3%E4%B8%8D%E6%8E%89"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=%E8%B5%B0%E8%BF%91%E7%A7%91%E5%AD%A6%E4%B9%8BSurge%E5%85%B3%E4%B8%8D%E6%8E%89&body=Check%20out%20this%20article%3A%20https%3A%2F%2Fnaive.cat%2F2026%2F02%2F07%2Fsurge-tailscale-conflict%2F"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F07%2Fsurge-tailscale-conflict%2F&title=%E8%B5%B0%E8%BF%91%E7%A7%91%E5%AD%A6%E4%B9%8BSurge%E5%85%B3%E4%B8%8D%E6%8E%89"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://reddit.com/submit?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F07%2Fsurge-tailscale-conflict%2F&title=%E8%B5%B0%E8%BF%91%E7%A7%91%E5%AD%A6%E4%B9%8BSurge%E5%85%B3%E4%B8%8D%E6%8E%89"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://www.stumbleupon.com/submit?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F07%2Fsurge-tailscale-conflict%2F&title=%E8%B5%B0%E8%BF%91%E7%A7%91%E5%AD%A6%E4%B9%8BSurge%E5%85%B3%E4%B8%8D%E6%8E%89"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://digg.com/submit?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F07%2Fsurge-tailscale-conflict%2F&title=%E8%B5%B0%E8%BF%91%E7%A7%91%E5%AD%A6%E4%B9%8BSurge%E5%85%B3%E4%B8%8D%E6%8E%89"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://www.tumblr.com/share/link?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F07%2Fsurge-tailscale-conflict%2F&name=%E8%B5%B0%E8%BF%91%E7%A7%91%E5%AD%A6%E4%B9%8BSurge%E5%85%B3%E4%B8%8D%E6%8E%89&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F07%2Fsurge-tailscale-conflict%2F&t=%E8%B5%B0%E8%BF%91%E7%A7%91%E5%AD%A6%E4%B9%8BSurge%E5%85%B3%E4%B8%8D%E6%8E%89"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2026
+    NaiveCat
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="https://github.com/naivecatme">Projects</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+ 
+  <link
+    rel="preload"
+    href="/lib/font-awesome/css/fa-lite.css"
+    as="style"
+    onload="this.onload=null;this.rel='stylesheet'"
+  />
+  <noscript
+    ><link
+      rel="stylesheet"
+      href="/lib/font-awesome/css/fa-lite.css"
+  /></noscript>
+
+
+    <!-- jquery -->
+
+  
+<script src="/lib/jquery/jquery.min.js"></script>
+
+
+
+
+
+<!-- clipboard -->
+
+  
+    
+<script src="/lib/clipboard/clipboard.min.js"></script>
+
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-solid fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+<!-- Waline Comments -->
+
+  <script type="module">
+    import { init } from 'https://unpkg.com/@waline/client@v3/dist/waline.js';
+
+    init({
+      el: '#waline_thread',
+      serverURL: 'https://waline.naivecat.net',
+      path: window.location.pathname,
+      lang: 'zh-CN',
+      emoji: ["https://unpkg.com/@waline/emojis@1.2.0/weibo"],
+    });
+  </script>
+
+
+</body>
+</html>

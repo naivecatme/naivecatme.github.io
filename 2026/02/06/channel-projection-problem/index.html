@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang=&#34;en&#34;>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="最近在做异常检测的算法，主实验是在 BMAD 这套数据集上做 leave one out，BMAD 这套数据集是由MRI、CT、OCT等一共六个数据集组成，这些图像的通道数差异巨大。 为了适应统一的模型输入，我用了一个可学习的 channel_proj 层，它的作用是将不同通道数的输入转换为统一的3通道格式。 1234567# 可训练的通道转换层self.channel_proj &#x3D; nn.Con">
+<meta property="og:type" content="article">
+<meta property="og:title" content="一个可学习通道转换引发的惨案">
+<meta property="og:url" content="https://naive.cat/2026/02/06/channel-projection-problem/index.html">
+<meta property="og:site_name" content="NaiveCat">
+<meta property="og:description" content="最近在做异常检测的算法，主实验是在 BMAD 这套数据集上做 leave one out，BMAD 这套数据集是由MRI、CT、OCT等一共六个数据集组成，这些图像的通道数差异巨大。 为了适应统一的模型输入，我用了一个可学习的 channel_proj 层，它的作用是将不同通道数的输入转换为统一的3通道格式。 1234567# 可训练的通道转换层self.channel_proj &#x3D; nn.Con">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2026-02-06T16:44:41.000Z">
+<meta property="article:modified_time" content="2026-02-08T05:11:08.143Z">
+<meta property="article:author" content="NaiveCat">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/logo.png">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/logo.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/logo.png">
+        
+      
+    
+    <!-- title -->
+    <title>一个可学习通道转换引发的惨案</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    
+      <link rel="stylesheet" href="https://unpkg.com/@waline/client@v3/dist/waline.css" />
+    
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 8.1.1"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="https://github.com/naivecatme">Projects</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="Previous post" href="/2026/02/07/surge-tailscale-conflict/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/2026/02/06/hello-world/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      
+<ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://www.facebook.com/sharer.php?u=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F06%2Fchannel-projection-problem%2F"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F06%2Fchannel-projection-problem%2F&text=%E4%B8%80%E4%B8%AA%E5%8F%AF%E5%AD%A6%E4%B9%A0%E9%80%9A%E9%81%93%E8%BD%AC%E6%8D%A2%E5%BC%95%E5%8F%91%E7%9A%84%E6%83%A8%E6%A1%88"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://www.linkedin.com/shareArticle?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F06%2Fchannel-projection-problem%2F&title=%E4%B8%80%E4%B8%AA%E5%8F%AF%E5%AD%A6%E4%B9%A0%E9%80%9A%E9%81%93%E8%BD%AC%E6%8D%A2%E5%BC%95%E5%8F%91%E7%9A%84%E6%83%A8%E6%A1%88"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F06%2Fchannel-projection-problem%2F&is_video=false&description=%E4%B8%80%E4%B8%AA%E5%8F%AF%E5%AD%A6%E4%B9%A0%E9%80%9A%E9%81%93%E8%BD%AC%E6%8D%A2%E5%BC%95%E5%8F%91%E7%9A%84%E6%83%A8%E6%A1%88"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=%E4%B8%80%E4%B8%AA%E5%8F%AF%E5%AD%A6%E4%B9%A0%E9%80%9A%E9%81%93%E8%BD%AC%E6%8D%A2%E5%BC%95%E5%8F%91%E7%9A%84%E6%83%A8%E6%A1%88&body=Check%20out%20this%20article%3A%20https%3A%2F%2Fnaive.cat%2F2026%2F02%2F06%2Fchannel-projection-problem%2F"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F06%2Fchannel-projection-problem%2F&title=%E4%B8%80%E4%B8%AA%E5%8F%AF%E5%AD%A6%E4%B9%A0%E9%80%9A%E9%81%93%E8%BD%AC%E6%8D%A2%E5%BC%95%E5%8F%91%E7%9A%84%E6%83%A8%E6%A1%88"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://reddit.com/submit?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F06%2Fchannel-projection-problem%2F&title=%E4%B8%80%E4%B8%AA%E5%8F%AF%E5%AD%A6%E4%B9%A0%E9%80%9A%E9%81%93%E8%BD%AC%E6%8D%A2%E5%BC%95%E5%8F%91%E7%9A%84%E6%83%A8%E6%A1%88"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://www.stumbleupon.com/submit?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F06%2Fchannel-projection-problem%2F&title=%E4%B8%80%E4%B8%AA%E5%8F%AF%E5%AD%A6%E4%B9%A0%E9%80%9A%E9%81%93%E8%BD%AC%E6%8D%A2%E5%BC%95%E5%8F%91%E7%9A%84%E6%83%A8%E6%A1%88"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://digg.com/submit?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F06%2Fchannel-projection-problem%2F&title=%E4%B8%80%E4%B8%AA%E5%8F%AF%E5%AD%A6%E4%B9%A0%E9%80%9A%E9%81%93%E8%BD%AC%E6%8D%A2%E5%BC%95%E5%8F%91%E7%9A%84%E6%83%A8%E6%A1%88"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://www.tumblr.com/share/link?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F06%2Fchannel-projection-problem%2F&name=%E4%B8%80%E4%B8%AA%E5%8F%AF%E5%AD%A6%E4%B9%A0%E9%80%9A%E9%81%93%E8%BD%AC%E6%8D%A2%E5%BC%95%E5%8F%91%E7%9A%84%E6%83%A8%E6%A1%88&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F06%2Fchannel-projection-problem%2F&t=%E4%B8%80%E4%B8%AA%E5%8F%AF%E5%AD%A6%E4%B9%A0%E9%80%9A%E9%81%93%E8%BD%AC%E6%8D%A2%E5%BC%95%E5%8F%91%E7%9A%84%E6%83%A8%E6%A1%88"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%97%AE%E9%A2%98"><span class="toc-number">1.</span> <span class="toc-text">问题</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%A7%A3%E5%86%B3"><span class="toc-number">2.</span> <span class="toc-text">解决</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%90%8E%E7%BB%AD"><span class="toc-number">3.</span> <span class="toc-text">后续</span></a></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        一个可学习通道转换引发的惨案
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">NaiveCat</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2026-02-06T16:44:41.000Z" class="dt-published" itemprop="datePublished">2026-02-06</time>
+        
+      
+    </div>
+
+
+      
+
+      
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <p>最近在做异常检测的算法，主实验是在 BMAD 这套数据集上做 leave one out，BMAD 这套数据集是由MRI、CT、OCT等一共六个数据集组成，这些图像的通道数差异巨大。</p>
+<p>为了适应统一的模型输入，我用了一个可学习的 channel_proj 层，它的作用是将不同通道数的输入转换为统一的3通道格式。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 可训练的通道转换层</span></span><br><span class="line"><span class="variable language_">self</span>.channel_proj = nn.Conv2d(<span class="number">4</span>, <span class="variable language_">self</span>.target_channels, kernel_size=<span class="number">1</span>, bias=<span class="literal">False</span>)</span><br><span class="line"><span class="comment"># 初始化卷积权重（凯明初始化，适合ReLU类激活）</span></span><br><span class="line">nn.init.kaiming_normal_(<span class="variable language_">self</span>.channel_proj.weight, mode=<span class="string">&#x27;fan_out&#x27;</span>, nonlinearity=<span class="string">&#x27;relu&#x27;</span>)</span><br><span class="line">...</span><br><span class="line"><span class="comment"># 维度转换</span></span><br><span class="line">x_out = <span class="variable language_">self</span>.channel_proj(x_flat)</span><br></pre></td></tr></table></figure>
+
+<h2 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h2><p>然而，这个看似简单的转换层，在跨域任务中，带来极其灾难的后果。</p>
+<p>如果不做跨域，那其实这个可学习的通道转换也许是有利的（因为模型在尽量拟合同域的数据分布），但是问题在于我做的是跨域的，也就是在A上训，B上推。</p>
+<p>具体表现就是：虽然源域训练中没有问题，但在目标域上，随着训练的进行，验证准确率发生下降。</p>
+<p>因为 channel_proj 层是一个可学习的1×1卷积，它的作用是对输入图像进行通道映射，而他又是在模型的入口（且我的backbone是冻结的），因此在源域数据的训练过程中，这个模块学到了一些对目标域不适用的映射，而在目标域推理时，就会导致对输入图像进行了错误的偏移。</p>
+<h2 id="解决"><a href="#解决" class="headerlink" title="解决"></a>解决</h2><p>因为BMAD这套数据集里即使有四通道的，第四个通道也是无意义信息，所以直接丢弃即可。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">x_out = x_flat[:, :<span class="number">3</span>, :, :].contiguous()</span><br></pre></td></tr></table></figure>
+
+<h2 id="后续"><a href="#后续" class="headerlink" title="后续"></a>后续</h2><p>改了之后明显跨域性能得到提高，但这个问题导致浪费了很多时间，因为我后面的很多改进都是在受到这个负面影响的指标下在做改进。</p>
+
+  </div>
+</article>
+
+
+
+    <section class="blog-post-comments blog-post-comments-waline">
+        <h2 class="comments-title">评论</h2>
+        <div id="waline_thread">
+            <noscript>Please enable JavaScript to view the comments.</noscript>
+        </div>
+    </section>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="https://github.com/naivecatme">Projects</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%97%AE%E9%A2%98"><span class="toc-number">1.</span> <span class="toc-text">问题</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%A7%A3%E5%86%B3"><span class="toc-number">2.</span> <span class="toc-text">解决</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%90%8E%E7%BB%AD"><span class="toc-number">3.</span> <span class="toc-text">后续</span></a></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      
+<ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://www.facebook.com/sharer.php?u=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F06%2Fchannel-projection-problem%2F"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F06%2Fchannel-projection-problem%2F&text=%E4%B8%80%E4%B8%AA%E5%8F%AF%E5%AD%A6%E4%B9%A0%E9%80%9A%E9%81%93%E8%BD%AC%E6%8D%A2%E5%BC%95%E5%8F%91%E7%9A%84%E6%83%A8%E6%A1%88"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://www.linkedin.com/shareArticle?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F06%2Fchannel-projection-problem%2F&title=%E4%B8%80%E4%B8%AA%E5%8F%AF%E5%AD%A6%E4%B9%A0%E9%80%9A%E9%81%93%E8%BD%AC%E6%8D%A2%E5%BC%95%E5%8F%91%E7%9A%84%E6%83%A8%E6%A1%88"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F06%2Fchannel-projection-problem%2F&is_video=false&description=%E4%B8%80%E4%B8%AA%E5%8F%AF%E5%AD%A6%E4%B9%A0%E9%80%9A%E9%81%93%E8%BD%AC%E6%8D%A2%E5%BC%95%E5%8F%91%E7%9A%84%E6%83%A8%E6%A1%88"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=%E4%B8%80%E4%B8%AA%E5%8F%AF%E5%AD%A6%E4%B9%A0%E9%80%9A%E9%81%93%E8%BD%AC%E6%8D%A2%E5%BC%95%E5%8F%91%E7%9A%84%E6%83%A8%E6%A1%88&body=Check%20out%20this%20article%3A%20https%3A%2F%2Fnaive.cat%2F2026%2F02%2F06%2Fchannel-projection-problem%2F"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F06%2Fchannel-projection-problem%2F&title=%E4%B8%80%E4%B8%AA%E5%8F%AF%E5%AD%A6%E4%B9%A0%E9%80%9A%E9%81%93%E8%BD%AC%E6%8D%A2%E5%BC%95%E5%8F%91%E7%9A%84%E6%83%A8%E6%A1%88"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://reddit.com/submit?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F06%2Fchannel-projection-problem%2F&title=%E4%B8%80%E4%B8%AA%E5%8F%AF%E5%AD%A6%E4%B9%A0%E9%80%9A%E9%81%93%E8%BD%AC%E6%8D%A2%E5%BC%95%E5%8F%91%E7%9A%84%E6%83%A8%E6%A1%88"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://www.stumbleupon.com/submit?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F06%2Fchannel-projection-problem%2F&title=%E4%B8%80%E4%B8%AA%E5%8F%AF%E5%AD%A6%E4%B9%A0%E9%80%9A%E9%81%93%E8%BD%AC%E6%8D%A2%E5%BC%95%E5%8F%91%E7%9A%84%E6%83%A8%E6%A1%88"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://digg.com/submit?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F06%2Fchannel-projection-problem%2F&title=%E4%B8%80%E4%B8%AA%E5%8F%AF%E5%AD%A6%E4%B9%A0%E9%80%9A%E9%81%93%E8%BD%AC%E6%8D%A2%E5%BC%95%E5%8F%91%E7%9A%84%E6%83%A8%E6%A1%88"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://www.tumblr.com/share/link?url=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F06%2Fchannel-projection-problem%2F&name=%E4%B8%80%E4%B8%AA%E5%8F%AF%E5%AD%A6%E4%B9%A0%E9%80%9A%E9%81%93%E8%BD%AC%E6%8D%A2%E5%BC%95%E5%8F%91%E7%9A%84%E6%83%A8%E6%A1%88&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https%3A%2F%2Fnaive.cat%2F2026%2F02%2F06%2Fchannel-projection-problem%2F&t=%E4%B8%80%E4%B8%AA%E5%8F%AF%E5%AD%A6%E4%B9%A0%E9%80%9A%E9%81%93%E8%BD%AC%E6%8D%A2%E5%BC%95%E5%8F%91%E7%9A%84%E6%83%A8%E6%A1%88"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2026
+    NaiveCat
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="https://github.com/naivecatme">Projects</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+ 
+  <link
+    rel="preload"
+    href="/lib/font-awesome/css/fa-lite.css"
+    as="style"
+    onload="this.onload=null;this.rel='stylesheet'"
+  />
+  <noscript
+    ><link
+      rel="stylesheet"
+      href="/lib/font-awesome/css/fa-lite.css"
+  /></noscript>
+
+
+    <!-- jquery -->
+
+  
+<script src="/lib/jquery/jquery.min.js"></script>
+
+
+
+
+
+<!-- clipboard -->
+
+  
+    
+<script src="/lib/clipboard/clipboard.min.js"></script>
+
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-solid fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+<!-- Waline Comments -->
+
+  <script type="module">
+    import { init } from 'https://unpkg.com/@waline/client@v3/dist/waline.js';
+
+    init({
+      el: '#waline_thread',
+      serverURL: 'https://waline.naivecat.net',
+      path: window.location.pathname,
+      lang: 'zh-CN',
+      emoji: ["https://unpkg.com/@waline/emojis@1.2.0/weibo"],
+    });
+  </script>
+
+
+</body>
+</html>
